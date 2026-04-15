@@ -12,6 +12,32 @@ import java.util.List;
 
 public class Main {
 
+    private static final String CSS = "<style>" +
+            "body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f7f6; color: #333; margin: 40px; line-height: 1.6; }"
+            +
+            "h1 { color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px; }" +
+            "table { width: 100%; border-collapse: collapse; background: white; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden; margin-top: 20px; }"
+            +
+            "th { background-color: #3498db; color: white; padding: 15px; text-align: left; }" +
+            "td { padding: 12px 15px; border-bottom: 1px solid #ddd; }" +
+            "tr:hover { background-color: #f1f1f1; }" +
+            "form { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 500px; }"
+            +
+            "label { font-weight: bold; display: block; margin-top: 15px; }" +
+            "input, select, textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 14px; }"
+            +
+            "button { background-color: #27ae60; color: white; border: none; padding: 12px 20px; border-radius: 4px; cursor: pointer; font-size: 16px; margin-top: 20px; transition: background 0.3s; width: 100%; }"
+            +
+            "button:hover { background-color: #219150; }" +
+            ".detalhes-box { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 5px solid #3498db; }"
+            +
+            ".obs-box { background: #f9f9f9; padding: 15px; border-left: 3px solid #777; margin-top: 10px; font-style: italic; }"
+            +
+            "a { color: #3498db; text-decoration: none; font-weight: bold; }" +
+            "a:hover { text-decoration: underline; }" +
+            ".status { font-weight: bold; color: #e67e22; }" +
+            "</style>";
+
     public static void main(String[] args) {
 
         Javalin app = Javalin.create().start(7000);
@@ -20,118 +46,66 @@ public class Main {
         AlunoDAO alunoDAO = new AlunoDAO();
         TipoRequerimentoDAO tipoDAO = new TipoRequerimentoDAO();
 
-        app.get("/", ctx -> ctx.result("Servidor de Requerimento na porta 7000"));
-
-        app.get("/requerimentos", ctx -> {
-            try {
-                ctx.json(requerimentoDAO.listarTodos());
-            } catch (SQLException e) {
-                ctx.status(500).result("Erro ao acessar o banco: " + e.getMessage());
-            }
-        });
-
-        app.get("/tipos", ctx -> {
-            try {
-                ctx.json(tipoDAO.listarTodos());
-            } catch (SQLException e) {
-                ctx.status(500).result("Erro ao buscar tipos: " + e.getMessage());
-            }
-        });
-
-        app.get("/aluno/{matricula}", ctx -> {
-            String matricula = ctx.pathParam("matricula");
-            try {
-                ctx.json(alunoDAO.buscarPorMatricula(matricula));
-            } catch (SQLException e) {
-                ctx.status(500).result("Erro na busca: " + e.getMessage());
-            }
-        });
-
-        app.post("/abrir", ctx -> {
-            String matricula = ctx.queryParam("matricula");
-            int tipoId = Integer.parseInt(ctx.queryParam("tipo"));
-            String observacao = ctx.queryParam("obs");
-
-            try {
-                requerimentoDAO.abrirRequerimento(matricula, tipoId, observacao);
-                ctx.result("Requerimento aberto com sucesso!");
-            } catch (SQLException e) {
-                ctx.status(500).result("Erro ao salvar: " + e.getMessage());
-            }
+        
+        app.get("/", ctx -> {
+            ctx.contentType("text/html; charset=utf-8");
+            ctx.html(CSS + "<h1>Sistema de Requerimentos Acadêmicos</h1>" +
+                    "<p>Bem-vindo ao portal de solicitações.</p>" +
+                    "<ul>" +
+                    "<li><a href='/alunos'>Ver Listagem de Alunos</a></li>" +
+                    "<li><a href='/novo-requerimento'>Abrir Novo Requerimento</a></li>" +
+                    "</ul>");
         });
 
         app.get("/alunos", ctx -> {
             try {
-
                 List<Aluno> listaAlunos = alunoDAO.listarTodos();
-
                 ctx.contentType("text/html; charset=utf-8");
 
-                String html = "<h1>Listagem de Alunos</h1>";
-                html += "<table border='1' style='border-collapse: collapse; width: 100%;'>";
-                html += "<tr>" +
-                        "<th>Matrícula</th>" +
-                        "<th>Nome</th>" +
-                        "<th>Curso</th>" +
-                        "<th>Status</th>" +
-                        "</tr>";
+                StringBuilder html = new StringBuilder(CSS + "<h1>Listagem de Alunos</h1>");
+                html.append("<table><tr><th>Matrícula</th><th>Nome</th><th>Curso</th><th>Status</th></tr>");
 
                 for (Aluno a : listaAlunos) {
-                    html += "<tr>";
-                    html += "<td><a href='/aluno/" + a.getMatricula() + "/requerimentos'>" + a.getMatricula()
-                            + "</a></td>";
-                    html += "<td>" + a.getUsuario().getNome() + "</td>";
-                    html += "<td>" + a.getCurso().getNome() + "</td>";
-                    html += "<td>Ativo</td>";
-                    html += "</tr>";
+                    html.append("<tr>");
+                    html.append("<td><a href='/aluno/").append(a.getMatricula()).append("/requerimentos'>")
+                            .append(a.getMatricula()).append("</a></td>");
+                    html.append("<td>").append(a.getUsuario().getNome()).append("</td>");
+                    html.append("<td>").append(a.getCurso().getNome()).append("</td>");
+                    html.append("<td><span class='status'>Ativo</span></td>");
+                    html.append("</tr>");
                 }
-
-                html += "</table>";
-
-                ctx.html(html);
-
+                html.append("</table><br><a href='/'>Voltar ao Início</a>");
+                ctx.html(html.toString());
             } catch (SQLException e) {
                 ctx.status(500).result("Erro ao listar alunos: " + e.getMessage());
             }
         });
 
         app.get("/aluno/{matricula}/requerimentos", ctx -> {
-
             String matricula = ctx.pathParam("matricula");
-
             try {
-
                 List<Requerimento> lista = requerimentoDAO.listarPorAluno(matricula);
-
                 ctx.contentType("text/html; charset=utf-8");
 
-                String html = "<h1>Requerimentos do Aluno: " + matricula + "</h1>";
-                html += "<table border='1' style='border-collapse: collapse; width: 100%; text-align: left;'>";
-                html += "<tr>" +
-                        "<th>ID</th>" +
-                        "<th>Tipo</th>" +
-                        "<th>Data de Abertura</th>" +
-                        "<th>Status</th>" +
-                        "</tr>";
+                StringBuilder html = new StringBuilder(CSS + "<h1>Requerimentos do Aluno: " + matricula + "</h1>");
+                html.append(
+                        "<table><tr><th>ID</th><th>Tipo</th><th>Data de Abertura</th><th>Status</th><th>Ações</th></tr>");
 
                 if (lista.isEmpty()) {
-                    html += "<tr><td colspan='4'>Nenhum requerimento encontrado para este aluno.</td></tr>";
+                    html.append("<tr><td colspan='5'>Nenhum requerimento encontrado.</td></tr>");
                 } else {
                     for (Requerimento r : lista) {
-                        html += "<tr>";
-                        html += "<td>" + r.getId() + "</td>";
-                        html += "<td>" + r.getTipo().getDescricao() + "</td>";
-                        html += "<td>" + r.getDataHoraAbertura() + "</td>";
-                        html += "<td>" + r.getStatus() + "</td>";
-                        html += "</tr>";
+                        html.append("<tr>");
+                        html.append("<td>").append(r.getId()).append("</td>");
+                        html.append("<td>").append(r.getTipo().getDescricao()).append("</td>");
+                        html.append("<td>").append(r.getDataHoraAbertura()).append("</td>");
+                        html.append("<td><span class='status'>").append(r.getStatus()).append("</span></td>");
+                        html.append("<td><a href='/requerimento/").append(r.getId()).append("'>Ver Detalhes</a></td>");
+                        html.append("</tr>");
                     }
                 }
-
-                html += "</table>";
-                html += "<br><a href='/alunos'>Voltar para listagem</a>";
-
-                ctx.html(html);
-
+                html.append("</table><br><a href='/alunos'>Voltar para Alunos</a>");
+                ctx.html(html.toString());
             } catch (SQLException e) {
                 ctx.status(500).result("Erro ao buscar requerimentos: " + e.getMessage());
             }
@@ -139,90 +113,76 @@ public class Main {
 
         app.get("/novo-requerimento", ctx -> {
             try {
-
                 List<TipoRequerimento> tipos = tipoDAO.listarTodos();
-
                 ctx.contentType("text/html; charset=utf-8");
 
-                String html = "<h1>Abrir Novo Requerimento</h1>";
-                html += "<form action='/novo-requerimento' method='post' style='display: flex; flex-direction: column; width: 300px; gap: 10px;'>";
+                StringBuilder html = new StringBuilder(CSS + "<h1>Abrir Novo Requerimento</h1>");
+                html.append("<form action='/novo-requerimento' method='post'>");
+                html.append("<label>Matrícula do Aluno:</label>");
+                html.append("<input type='text' name='matricula' required placeholder='Ex: 2026000003'>");
 
-                html += "<label>Matrícula do Aluno:</label>";
-                html += "<input type='text' name='matricula' required placeholder='Ex: 2026000003'>";
-
-                html += "<label>Tipo de Requerimento:</label>";
-                html += "<select name='tipo_id'>";
+                html.append("<label>Tipo de Requerimento:</label>");
+                html.append("<select name='tipo_id'>");
                 for (TipoRequerimento t : tipos) {
-                    html += "<option value='" + t.getId() + "'>" + t.getDescricao() + "</option>";
+                    html.append("<option value='").append(t.getId()).append("'>").append(t.getDescricao())
+                            .append("</option>");
                 }
-                html += "</select>";
+                html.append("</select>");
 
-                html += "<label>Observação:</label>";
-                html += "<textarea name='observacao' rows='4'></textarea>";
+                html.append("<label>Observação:</label>");
+                html.append(
+                        "<textarea name='observacao' rows='4' placeholder='Descreva sua solicitação...'></textarea>");
 
-                html += "<button type='submit' style='padding: 10px; cursor: pointer;'>Enviar Requerimento</button>";
-                html += "</form>";
-                html += "<br><a href='/alunos'>Cancelar e voltar</a>";
+                html.append("<button type='submit'>Enviar Requerimento</button>");
+                html.append("</form><br><a href='/alunos'>Cancelar</a>");
 
-                ctx.html(html);
+                ctx.html(html.toString());
             } catch (SQLException e) {
                 ctx.status(500).result("Erro ao carregar tipos: " + e.getMessage());
             }
         });
 
         app.post("/novo-requerimento", ctx -> {
-
             String matricula = ctx.formParam("matricula");
             int tipoId = Integer.parseInt(ctx.formParam("tipo_id"));
             String observacao = ctx.formParam("observacao");
-
             try {
-
                 requerimentoDAO.abrirRequerimento(matricula, tipoId, observacao);
-
                 ctx.redirect("/aluno/" + matricula + "/requerimentos");
-
             } catch (SQLException e) {
-                ctx.status(500).result("Erro ao salvar requerimento: " + e.getMessage());
+                ctx.status(500).result("Erro ao salvar: " + e.getMessage());
             }
         });
 
         app.get("/requerimento/{id}", ctx -> {
-
-            int id = Integer.parseInt(ctx.pathParam("id"));
-
             try {
-
+                int id = Integer.parseInt(ctx.pathParam("id"));
                 Requerimento r = requerimentoDAO.buscarPorId(id);
-
                 ctx.contentType("text/html; charset=utf-8");
 
                 if (r == null) {
-                    ctx.status(404).html("<h1>Erro: Requerimento #" + id + " não encontrado.</h1>");
+                    ctx.status(404).html(CSS + "<h1>Requerimento não encontrado</h1><a href='/alunos'>Voltar</a>");
                     return;
                 }
 
-                String html = "<h1>Detalhes do Requerimento #" + r.getId() + "</h1>";
-                html += "<div style='border: 1px solid #ccc; padding: 20px; border-radius: 8px; line-height: 1.6;'>";
+                String html = CSS + "<h1>Detalhes do Requerimento #" + r.getId() + "</h1>";
+                html += "<div class='detalhes-box'>";
                 html += "<strong>Aluno:</strong> " + r.getAluno().getUsuario().getNome() + " ("
                         + r.getAluno().getMatricula() + ")<br>";
                 html += "<strong>Tipo:</strong> " + r.getTipo().getDescricao() + "<br>";
                 html += "<strong>Data de Abertura:</strong> " + r.getDataHoraAbertura() + "<br>";
-                html += "<strong>Status:</strong> <span style='color: blue; font-weight: bold;'>" + r.getStatus()
-                        + "</span><br>";
-                html += "<strong>Observação:</strong><br><p style='background: #f9f9f9; padding: 10px; border-left: 3px solid #777;'>"
-                        + r.getObservacao() + "</p>";
+                html += "<strong>Status:</strong> <span class='status'>" + r.getStatus() + "</span><br>";
+                html += "<strong>Observação:</strong><div class='obs-box'>"
+                        + (r.getObservacao() != null ? r.getObservacao() : "Sem observações.") + "</div>";
                 html += "</div>";
-
                 html += "<br><a href='/aluno/" + r.getAluno().getMatricula()
-                        + "/requerimentos'>Voltar para lista do aluno</a>";
+                        + "/requerimentos'>Voltar para a lista</a>";
 
                 ctx.html(html);
-
             } catch (SQLException e) {
-                ctx.status(500).result("Erro ao consultar requerimento: " + e.getMessage());
+                ctx.status(500).result("Erro: " + e.getMessage());
             } catch (NumberFormatException e) {
-                ctx.status(400).result("ID inválido fornecido na URL.");
+                ctx.status(400).result("ID inválido.");
             }
         });
 
